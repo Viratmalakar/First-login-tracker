@@ -1,9 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<title>Agent Login Dashboard</title>
+<link rel="stylesheet" href="/static/style.css">
+
+</head>
+
+<body>
+
+<div class="topbar">
+
+<h2>Agent Login Dashboard</h2>
+
 <div class="roster-panel">
 
 <form action="/upload_roster" method="post" enctype="multipart/form-data">
 
 <input type="file" name="roster">
-
 <button>Upload Roster</button>
 
 </form>
@@ -12,7 +26,7 @@
 
 <div class="roster-info">
 
-Roster uploaded successfully<br>
+Roster uploaded successfully <br>
 Upload Time : {{roster_time}}
 
 </div>
@@ -23,6 +37,27 @@ Upload Time : {{roster_time}}
 
 </div>
 
+</div>
+
+
+<!-- LOGIN REPORT UPLOAD -->
+
+<div class="upload-box">
+
+<h3>Upload Login Logout Report</h3>
+
+<form method="post" enctype="multipart/form-data">
+
+<input type="file" name="loginfile" required>
+
+<button>Upload Report</button>
+
+</form>
+
+</div>
+
+
+<!-- ACTION BUTTONS -->
 
 <div class="actions">
 
@@ -31,3 +66,69 @@ Upload Time : {{roster_time}}
 <a href="/reset" class="reset-btn">Reset Report</a>
 
 </div>
+
+
+{% if table %}
+
+<table>
+
+<tr>
+
+<th rowspan="2">UserName</th>
+<th rowspan="2">User Full Name</th>
+<th rowspan="2">Shift</th>
+
+{% for d in dates %}
+<th>{{d.strftime("%A")}}</th>
+{% endfor %}
+
+<th rowspan="2">Late Login</th>
+
+</tr>
+
+
+<tr>
+
+{% for d in dates %}
+<th>{{d}}</th>
+{% endfor %}
+
+</tr>
+
+
+{% for agent,data in table.items() %}
+
+<tr>
+
+<td>{{agent}}</td>
+<td>{{data.name}}</td>
+<td>{{data.shift}}</td>
+
+{% for d in dates %}
+
+{% if d in data.days %}
+
+{% set cell = data.days[d] %}
+
+<td class="{{cell.status}}">{{cell.time}}</td>
+
+{% else %}
+
+<td></td>
+
+{% endif %}
+
+{% endfor %}
+
+<td>{{data.late}}</td>
+
+</tr>
+
+{% endfor %}
+
+</table>
+
+{% endif %}
+
+</body>
+</html>
