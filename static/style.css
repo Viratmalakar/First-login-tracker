@@ -1,35 +1,63 @@
 body{
+
 font-family: Arial;
-background:#0f172a;
+background:#1e293b;
 color:white;
 text-align:center;
+
 }
 
-.upload-box{
-margin:20px;
-padding:20px;
-background:#1e293b;
-border-radius:10px;
+.topbar{
+
+display:flex;
+justify-content:space-between;
+padding:10px 40px;
+align-items:center;
+
+}
+
+.roster-box{
+
+display:flex;
+gap:10px;
+
 }
 
 table{
+
 margin:auto;
 border-collapse:collapse;
 margin-top:20px;
+background:white;
+color:black;
+
 }
 
 th,td{
-padding:10px 20px;
-border:1px solid #334155;
+
+border:1px solid #444;
+padding:6px 10px;
+
 }
 
 th{
-background:#2563eb;
+
+background:#ddd;
+
 }
 
 .late{
-background:#ff0000;
-color:white;
+
+color:red;
 font-weight:bold;
-box-shadow:0 0 10px red,0 0 20px red;
+
+}
+
+.delete-btn{
+
+background:red;
+padding:5px 10px;
+color:white;
+text-decoration:none;
+
 }
