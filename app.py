@@ -1,16 +1,16 @@
-from flask import Flask, render_template, request, redirect
+from flask import Flask, render_template, request, redirect, send_file
 import pandas as pd
 import os
 from datetime import timedelta
+from io import BytesIO
 
 app = Flask(__name__)
 
 ROSTER_FILE = "roster.xlsx"
+LAST_TABLE = None
+LAST_DATES = None
 
 
-# =============================
-# LOAD ROSTER
-# =============================
 def load_roster():
 
     if os.path.exists(ROSTER_FILE):
@@ -26,9 +26,6 @@ def load_roster():
     return None
 
 
-# =============================
-# PROCESS LOGIN REPORT
-# =============================
 def process_login(file):
 
     df = pd.read_excel(file)
@@ -48,7 +45,6 @@ def process_login(file):
     roster = load_roster()
 
     table = {}
-
     dates = sorted(first_login["Date"].unique())
 
     for _, row in first_login.iterrows():
@@ -69,8 +65,6 @@ def process_login(file):
 
         shift_row = roster[roster["Agent ID"] == agent]
 
-        status = ""
-
         if len(shift_row) > 0:
 
             shift_time = shift_row.iloc[0]["Shift"]
@@ -86,42 +80,62 @@ def process_login(file):
                 if login > grace:
 
                     status = "late"
-
                     table[agent]["late"] += 1
 
+                else:
+
+                    status = ""
+
+            else:
+
+                status = ""
+
+        else:
+
+            status = ""
+
+        login_time = login.strftime("%H:%M:%S")
+
+        if login_time == "00:00:00":
+
+            login_time = ""
+
         table[agent]["days"][date] = {
-            "time": login.strftime("%H:%M:%S"),
+            "time": login_time,
             "status": status
         }
 
     return table, dates
 
 
-# =============================
-# HOME PAGE
-# =============================
 @app.route("/", methods=["GET", "POST"])
 def index():
 
-    table = None
-    dates = None
+    global LAST_TABLE, LAST_DATES
+
+    message = ""
 
     if request.method == "POST":
 
         if "loginfile" in request.files:
 
-            loginfile = request.files["loginfile"]
+            file = request.files["loginfile"]
 
-            if loginfile.filename != "":
+            if file.filename != "":
 
-                table, dates = process_login(loginfile)
+                table, dates = process_login(file)
 
-    return render_template("index.html", table=table, dates=dates)
+                LAST_TABLE = table
+                LAST_DATES = dates
+
+    return render_template(
+        "index.html",
+        table=LAST_TABLE,
+        dates=LAST_DATES,
+        message=message
+    )
 
 
-# =============================
-# ROSTER UPLOAD
-# =============================
 @app.route("/upload_roster", methods=["POST"])
 def upload_roster():
 
@@ -131,25 +145,54 @@ def upload_roster():
 
         roster.save(ROSTER_FILE)
 
-    return redirect("/")
+    return redirect("/?msg=roster_uploaded")
 
 
-# =============================
-# DELETE ROSTER
-# =============================
-@app.route("/delete_roster")
-def delete_roster():
+@app.route("/export_excel")
+def export_excel():
 
-    if os.path.exists(ROSTER_FILE):
+    global LAST_TABLE, LAST_DATES
 
-        os.remove(ROSTER_FILE)
+    rows = []
 
-    return redirect("/")
+    for agent, data in LAST_TABLE.items():
+
+        row = {
+            "Agent": agent,
+            "Name": data["name"],
+            "Shift": data["shift"],
+            "Late Count": data["late"]
+        }
+
+        for d in LAST_DATES:
+
+            if d in data["days"]:
+
+                row[str(d)] = data["days"][d]["time"]
+
+            else:
+
+                row[str(d)] = ""
+
+        rows.append(row)
+
+    df = pd.DataFrame(rows)
+
+    output = BytesIO()
+
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+
+        df.to_excel(writer, index=False)
+
+    output.seek(0)
+
+    return send_file(
+        output,
+        download_name="login_report.xlsx",
+        as_attachment=True
+    )
 
 
-# =============================
-# RUN SERVER
-# =============================
 if __name__ == "__main__":
 
     port = int(os.environ.get("PORT", 10000))
