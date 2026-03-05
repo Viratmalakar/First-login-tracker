@@ -17,7 +17,6 @@ def load_roster():
 
         roster = pd.read_excel(ROSTER_FILE)
 
-        # shift time auto detect (08:30 / 08:30:00 both supported)
         roster["Shift"] = pd.to_datetime(
             roster["Shift"], errors="coerce"
         ).dt.time
@@ -41,7 +40,6 @@ def process_login(file):
     df["DateTime"] = pd.to_datetime(df["DateTime"])
 
     df["Date"] = df["DateTime"].dt.date
-    df["Time"] = df["DateTime"].dt.time
 
     first_login = df.sort_values("DateTime").groupby(
         ["UserName", "Agent Name", "Date"]
@@ -59,27 +57,28 @@ def process_login(file):
 
         shift_row = roster[roster["Agent ID"] == agent]
 
-        if len(shift_row) == 0:
+        status = ""
 
-            status = ""
-
-        else:
+        if len(shift_row) > 0:
 
             shift_time = shift_row.iloc[0]["Shift"]
 
-            shift_datetime = pd.to_datetime(
-                str(date) + " " + str(shift_time)
-            )
+            # SHIFT EMPTY CHECK
+            if pd.notna(shift_time):
 
-            grace = shift_datetime + timedelta(minutes=5)
+                shift_datetime = pd.to_datetime(
+                    str(date) + " " + str(shift_time)
+                )
 
-            if login_time > grace:
+                grace = shift_datetime + timedelta(minutes=5)
 
-                status = "late"
+                if login_time > grace:
 
-            else:
+                    status = "late"
 
-                status = "ok"
+                else:
+
+                    status = "ok"
 
         result.append({
 
@@ -104,7 +103,6 @@ def index():
 
     if request.method == "POST":
 
-        # roster upload
         if "roster" in request.files:
 
             roster = request.files["roster"]
@@ -113,7 +111,6 @@ def index():
 
                 roster.save(ROSTER_FILE)
 
-        # login report upload
         if "loginfile" in request.files:
 
             loginfile = request.files["loginfile"]
