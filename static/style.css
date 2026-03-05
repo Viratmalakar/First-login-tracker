@@ -1,48 +1,43 @@
 body{
 
-font-family: Arial;
-background:#1e293b;
-color:white;
-text-align:center;
+font-family:Segoe UI;
+background:#f4f6f9;
+margin:0;
 
 }
 
 .topbar{
 
+background:#2c3e50;
+color:white;
+padding:15px 30px;
 display:flex;
 justify-content:space-between;
-padding:10px 40px;
 align-items:center;
-
-}
-
-.roster-box{
-
-display:flex;
-gap:10px;
 
 }
 
 table{
 
-margin:auto;
+margin:30px auto;
 border-collapse:collapse;
-margin-top:20px;
 background:white;
-color:black;
-
-}
-
-th,td{
-
-border:1px solid #444;
-padding:6px 10px;
+box-shadow:0 5px 20px rgba(0,0,0,0.1);
 
 }
 
 th{
 
-background:#ddd;
+background:#34495e;
+color:white;
+
+}
+
+th,td{
+
+padding:8px 12px;
+border:1px solid #ddd;
+text-align:center;
 
 }
 
@@ -53,11 +48,14 @@ font-weight:bold;
 
 }
 
-.delete-btn{
+button,.btn{
 
-background:red;
-padding:5px 10px;
+background:#3498db;
 color:white;
+border:none;
+padding:8px 12px;
+margin:5px;
+cursor:pointer;
 text-decoration:none;
 
 }
