@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, redirect
 import pandas as pd
 import os
 from datetime import timedelta
@@ -8,9 +8,9 @@ app = Flask(__name__)
 ROSTER_FILE = "roster.xlsx"
 
 
-# =========================
+# =============================
 # LOAD ROSTER
-# =========================
+# =============================
 def load_roster():
 
     if os.path.exists(ROSTER_FILE):
@@ -26,9 +26,9 @@ def load_roster():
     return None
 
 
-# =========================
+# =============================
 # PROCESS LOGIN REPORT
-# =========================
+# =============================
 def process_login(file):
 
     df = pd.read_excel(file)
@@ -47,13 +47,25 @@ def process_login(file):
 
     roster = load_roster()
 
-    result = []
+    table = {}
+
+    dates = sorted(first_login["Date"].unique())
 
     for _, row in first_login.iterrows():
 
         agent = row["UserName"]
-        login_time = row["DateTime"]
+        name = row["Agent Name"]
         date = row["Date"]
+        login = row["DateTime"]
+
+        if agent not in table:
+
+            table[agent] = {
+                "name": name,
+                "days": {},
+                "late": 0,
+                "shift": ""
+            }
 
         shift_row = roster[roster["Agent ID"] == agent]
 
@@ -63,53 +75,38 @@ def process_login(file):
 
             shift_time = shift_row.iloc[0]["Shift"]
 
-            # SHIFT EMPTY CHECK
             if pd.notna(shift_time):
 
-                shift_datetime = pd.to_datetime(
-                    str(date) + " " + str(shift_time)
-                )
+                table[agent]["shift"] = shift_time
 
-                grace = shift_datetime + timedelta(minutes=5)
+                shift_dt = pd.to_datetime(str(date) + " " + str(shift_time))
 
-                if login_time > grace:
+                grace = shift_dt + timedelta(minutes=5)
+
+                if login > grace:
 
                     status = "late"
 
-                else:
+                    table[agent]["late"] += 1
 
-                    status = "ok"
+        table[agent]["days"][date] = {
+            "time": login.strftime("%H:%M:%S"),
+            "status": status
+        }
 
-        result.append({
-
-            "Agent": row["Agent Name"],
-            "Date": date,
-            "Day": pd.to_datetime(date).strftime("%A"),
-            "Login": login_time.strftime("%H:%M:%S"),
-            "Status": status
-
-        })
-
-    return pd.DataFrame(result)
+    return table, dates
 
 
-# =========================
-# MAIN PAGE
-# =========================
+# =============================
+# HOME PAGE
+# =============================
 @app.route("/", methods=["GET", "POST"])
 def index():
 
     table = None
+    dates = None
 
     if request.method == "POST":
-
-        if "roster" in request.files:
-
-            roster = request.files["roster"]
-
-            if roster.filename != "":
-
-                roster.save(ROSTER_FILE)
 
         if "loginfile" in request.files:
 
@@ -117,16 +114,42 @@ def index():
 
             if loginfile.filename != "":
 
-                df = process_login(loginfile)
+                table, dates = process_login(loginfile)
 
-                table = df.to_dict(orient="records")
-
-    return render_template("index.html", table=table)
+    return render_template("index.html", table=table, dates=dates)
 
 
-# =========================
-# RUN SERVER (RENDER FIX)
-# =========================
+# =============================
+# ROSTER UPLOAD
+# =============================
+@app.route("/upload_roster", methods=["POST"])
+def upload_roster():
+
+    roster = request.files["roster"]
+
+    if roster.filename != "":
+
+        roster.save(ROSTER_FILE)
+
+    return redirect("/")
+
+
+# =============================
+# DELETE ROSTER
+# =============================
+@app.route("/delete_roster")
+def delete_roster():
+
+    if os.path.exists(ROSTER_FILE):
+
+        os.remove(ROSTER_FILE)
+
+    return redirect("/")
+
+
+# =============================
+# RUN SERVER
+# =============================
 if __name__ == "__main__":
 
     port = int(os.environ.get("PORT", 10000))
