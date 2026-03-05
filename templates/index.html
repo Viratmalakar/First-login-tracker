@@ -2,49 +2,98 @@
 <html>
 <head>
 
-<title>Agent First Login Tracker</title>
+<title>Agent Login Dashboard</title>
 <link rel="stylesheet" href="/static/style.css">
 
 </head>
 
 <body>
 
-<h1>Agent First Login Tracker</h1>
+<div class="topbar">
 
-<form method="POST" enctype="multipart/form-data">
+<h2>Agent Login Dashboard</h2>
 
-<div class="upload-box">
+<div class="roster-box">
 
-<h3>Upload Roster</h3>
+<form action="/upload_roster" method="post" enctype="multipart/form-data">
 <input type="file" name="roster">
+<button>Upload Roster</button>
+</form>
 
-<h3>Upload Login Report</h3>
-<input type="file" name="loginfile">
-
-<button type="submit">Process</button>
+<a href="/delete_roster" class="delete-btn">Delete Roster</a>
 
 </div>
 
+</div>
+
+
+<form method="post" enctype="multipart/form-data">
+
+<input type="file" name="loginfile">
+<button>Upload Login Report</button>
+
 </form>
+
 
 {% if table %}
 
 <table>
 
 <tr>
-<th>Agent</th>
-<th>Date</th>
-<th>Day</th>
-<th>First Login</th>
+
+<th rowspan="2">UserName</th>
+<th rowspan="2">User Full Name</th>
+<th rowspan="2">Shift</th>
+
+{% for d in dates %}
+
+<th>{{d.strftime("%A")}}</th>
+
+{% endfor %}
+
+<th rowspan="2">Late Login</th>
+
 </tr>
 
-{% for row in table %}
 
-<tr class="{{row.Status}}">
-<td>{{row.Agent}}</td>
-<td>{{row.Date}}</td>
-<td>{{row.Day}}</td>
-<td>{{row.Login}}</td>
+<tr>
+
+{% for d in dates %}
+
+<th>{{d}}</th>
+
+{% endfor %}
+
+</tr>
+
+
+{% for agent,data in table.items() %}
+
+<tr>
+
+<td>{{agent}}</td>
+
+<td>{{data.name}}</td>
+
+<td>{{data.shift}}</td>
+
+{% for d in dates %}
+
+{% if d in data.days %}
+
+{% set cell = data.days[d] %}
+
+<td class="{{cell.status}}">{{cell.time}}</td>
+
+{% else %}
+
+<td>00:00:00</td>
+
+{% endif %}
+
+{% endfor %}
+
+<td>{{data.late}}</td>
 
 </tr>
 
