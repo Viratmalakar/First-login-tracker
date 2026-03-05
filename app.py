@@ -1,16 +1,21 @@
 from flask import Flask, render_template, request, redirect, send_file
 import pandas as pd
 import os
-from datetime import timedelta
+from datetime import datetime, timedelta
 from io import BytesIO
 
 app = Flask(__name__)
 
 ROSTER_FILE = "roster.xlsx"
+ROSTER_INFO = "roster_info.txt"
+
 LAST_TABLE = None
 LAST_DATES = None
 
 
+# =========================
+# LOAD ROSTER
+# =========================
 def load_roster():
 
     if os.path.exists(ROSTER_FILE):
@@ -26,6 +31,9 @@ def load_roster():
     return None
 
 
+# =========================
+# PROCESS LOGIN
+# =========================
 def process_login(file):
 
     df = pd.read_excel(file)
@@ -71,9 +79,11 @@ def process_login(file):
 
             if pd.notna(shift_time):
 
-                table[agent]["shift"] = shift_time
+                shift_text = shift_time.strftime("%H:%M:%S")
 
-                shift_dt = pd.to_datetime(str(date) + " " + str(shift_time))
+                table[agent]["shift"] = shift_text
+
+                shift_dt = pd.to_datetime(str(date) + " " + shift_text)
 
                 grace = shift_dt + timedelta(minutes=5)
 
@@ -108,12 +118,20 @@ def process_login(file):
     return table, dates
 
 
+# =========================
+# HOME
+# =========================
 @app.route("/", methods=["GET", "POST"])
 def index():
 
     global LAST_TABLE, LAST_DATES
 
     message = ""
+    roster_time = ""
+
+    if os.path.exists(ROSTER_INFO):
+
+        roster_time = open(ROSTER_INFO).read()
 
     if request.method == "POST":
 
@@ -123,19 +141,19 @@ def index():
 
             if file.filename != "":
 
-                table, dates = process_login(file)
-
-                LAST_TABLE = table
-                LAST_DATES = dates
+                LAST_TABLE, LAST_DATES = process_login(file)
 
     return render_template(
         "index.html",
         table=LAST_TABLE,
         dates=LAST_DATES,
-        message=message
+        roster_time=roster_time
     )
 
 
+# =========================
+# UPLOAD ROSTER
+# =========================
 @app.route("/upload_roster", methods=["POST"])
 def upload_roster():
 
@@ -145,13 +163,51 @@ def upload_roster():
 
         roster.save(ROSTER_FILE)
 
-    return redirect("/?msg=roster_uploaded")
+        time = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
+
+        with open(ROSTER_INFO, "w") as f:
+
+            f.write(time)
+
+    return redirect("/")
 
 
-@app.route("/export_excel")
-def export_excel():
+# =========================
+# DELETE ROSTER
+# =========================
+@app.route("/delete_roster")
+def delete_roster():
+
+    if os.path.exists(ROSTER_FILE):
+
+        os.remove(ROSTER_FILE)
+
+    if os.path.exists(ROSTER_INFO):
+
+        os.remove(ROSTER_INFO)
+
+    return redirect("/")
+
+
+# =========================
+# RESET REPORT
+# =========================
+@app.route("/reset")
+def reset():
 
     global LAST_TABLE, LAST_DATES
+
+    LAST_TABLE = None
+    LAST_DATES = None
+
+    return redirect("/")
+
+
+# =========================
+# EXPORT EXCEL
+# =========================
+@app.route("/export_excel")
+def export_excel():
 
     rows = []
 
