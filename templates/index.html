@@ -1,0 +1,59 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+
+<title>Agent First Login Tracker</title>
+<link rel="stylesheet" href="/static/style.css">
+
+</head>
+
+<body>
+
+<h1>Agent First Login Tracker</h1>
+
+<form method="POST" enctype="multipart/form-data">
+
+<div class="upload-box">
+
+<h3>Upload Roster</h3>
+<input type="file" name="roster">
+
+<h3>Upload Login Report</h3>
+<input type="file" name="loginfile">
+
+<button type="submit">Process</button>
+
+</div>
+
+</form>
+
+{% if table %}
+
+<table>
+
+<tr>
+<th>Agent</th>
+<th>Date</th>
+<th>Day</th>
+<th>First Login</th>
+</tr>
+
+{% for row in table %}
+
+<tr class="{{row.Status}}">
+<td>{{row.Agent}}</td>
+<td>{{row.Date}}</td>
+<td>{{row.Day}}</td>
+<td>{{row.Login}}</td>
+
+</tr>
+
+{% endfor %}
+
+</table>
+
+{% endif %}
+
+</body>
+</html>

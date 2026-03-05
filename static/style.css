@@ -1,0 +1,36 @@
+
+body{
+font-family: Arial;
+background:#0f172a;
+color:white;
+text-align:center;
+}
+
+.upload-box{
+margin:20px;
+padding:20px;
+background:#1e293b;
+border-radius:10px;
+}
+
+table{
+margin:auto;
+border-collapse:collapse;
+margin-top:20px;
+}
+
+th,td{
+padding:10px 20px;
+border:1px solid #334155;
+}
+
+th{
+background:#2563eb;
+}
+
+.late{
+background:#ff0000;
+color:white;
+font-weight:bold;
+box-shadow:0 0 10px red,0 0 20px red;
+}
