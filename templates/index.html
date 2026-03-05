@@ -13,14 +13,14 @@
 
 <h2>Agent Login Dashboard</h2>
 
-<div class="roster-box">
+<div>
 
 <form action="/upload_roster" method="post" enctype="multipart/form-data">
 <input type="file" name="roster">
 <button>Upload Roster</button>
 </form>
 
-<a href="/delete_roster" class="delete-btn">Delete Roster</a>
+<a href="/export_excel" class="btn">Export Excel</a>
 
 </div>
 
@@ -46,22 +46,17 @@
 <th rowspan="2">Shift</th>
 
 {% for d in dates %}
-
 <th>{{d.strftime("%A")}}</th>
-
 {% endfor %}
 
 <th rowspan="2">Late Login</th>
 
 </tr>
 
-
 <tr>
 
 {% for d in dates %}
-
 <th>{{d}}</th>
-
 {% endfor %}
 
 </tr>
@@ -72,9 +67,7 @@
 <tr>
 
 <td>{{agent}}</td>
-
 <td>{{data.name}}</td>
-
 <td>{{data.shift}}</td>
 
 {% for d in dates %}
@@ -87,7 +80,7 @@
 
 {% else %}
 
-<td>00:00:00</td>
+<td></td>
 
 {% endif %}
 
