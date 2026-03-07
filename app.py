@@ -18,26 +18,23 @@ LAST_DATES = None
 # =========================
 def load_roster():
 
-    if os.path.exists(ROSTER_FILE):
+    if not os.path.exists(ROSTER_FILE):
+        return None
 
-        roster = pd.read_excel(ROSTER_FILE)
+    roster = pd.read_excel(ROSTER_FILE)
 
-        # CLEAN AGENT ID FORMAT
-        roster["Agent ID"] = (
-            roster["Agent ID"]
-            .astype(str)
-            .str.replace(".0", "", regex=False)
-            .str.strip()
-        )
+    roster["Agent ID"] = (
+        roster["Agent ID"]
+        .astype(str)
+        .str.replace(".0", "", regex=False)
+        .str.strip()
+    )
 
-        # CLEAN SHIFT FORMAT
-        roster["Shift"] = pd.to_datetime(
-            roster["Shift"], errors="coerce"
-        ).dt.time
+    roster["Shift"] = pd.to_datetime(
+        roster["Shift"], errors="coerce"
+    ).dt.time
 
-        return roster
-
-    return None
+    return roster
 
 
 # =========================
@@ -51,7 +48,6 @@ def process_login(file):
 
     df = df[df["Event"] == "LOGIN"]
 
-    # CLEAN USERNAME FORMAT
     df["UserName"] = (
         df["UserName"]
         .astype(str)
@@ -116,7 +112,6 @@ def process_login(file):
         login_time = login.strftime("%H:%M:%S")
 
         if login_time == "00:00:00":
-
             login_time = ""
 
         table[agent]["days"][date] = {
@@ -128,7 +123,7 @@ def process_login(file):
 
 
 # =========================
-# HOME PAGE
+# HOME
 # =========================
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -138,7 +133,6 @@ def index():
     roster_time = ""
 
     if os.path.exists(ROSTER_INFO):
-
         roster_time = open(ROSTER_INFO).read()
 
     if request.method == "POST":
@@ -174,7 +168,6 @@ def upload_roster():
         time = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
 
         with open(ROSTER_INFO, "w") as f:
-
             f.write(time)
 
     return redirect("/")
@@ -187,11 +180,9 @@ def upload_roster():
 def delete_roster():
 
     if os.path.exists(ROSTER_FILE):
-
         os.remove(ROSTER_FILE)
 
     if os.path.exists(ROSTER_INFO):
-
         os.remove(ROSTER_INFO)
 
     return redirect("/")
@@ -234,11 +225,8 @@ def export_excel():
         for d in LAST_DATES:
 
             if d in data["days"]:
-
                 row[str(d)] = data["days"][d]["time"]
-
             else:
-
                 row[str(d)] = ""
 
         rows.append(row)
@@ -248,7 +236,6 @@ def export_excel():
     output = BytesIO()
 
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
-
         df.to_excel(writer, index=False)
 
     output.seek(0)
@@ -258,13 +245,3 @@ def export_excel():
         download_name="login_report.xlsx",
         as_attachment=True
     )
-
-
-# =========================
-# RUN SERVER (RENDER FIX)
-# =========================
-if __name__ == "__main__":
-
-    port = int(os.environ.get("PORT", 10000))
-
-    app.run(host="0.0.0.0", port=port)
