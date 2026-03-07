@@ -1,100 +1,58 @@
 <!DOCTYPE html>
 <html>
 <head>
-
-<title>Agent Login Dashboard</title>
+<title>First Login Tracker</title>
 <link rel="stylesheet" href="/static/style.css">
-
 </head>
 
 <body>
 
-<div class="topbar">
+<h2>Agent First Login Tracker</h2>
 
-<h2>Agent Login Dashboard</h2>
-
-<div class="roster-panel">
+<div class="top">
 
 <form action="/upload_roster" method="post" enctype="multipart/form-data">
-
 <input type="file" name="roster">
 <button>Upload Roster</button>
-
 </form>
 
-{% if roster_time %}
+<a href="/delete_roster">Delete Roster</a>
 
-<div class="roster-info">
-
-Roster uploaded successfully <br>
-Upload Time : {{roster_time}}
+<p>Roster Uploaded : {{roster_time}}</p>
 
 </div>
 
-<a href="/delete_roster" class="delete-btn">Delete Roster</a>
-
-{% endif %}
-
-</div>
-
-</div>
-
-
-<!-- LOGIN REPORT UPLOAD -->
-
-<div class="upload-box">
-
-<h3>Upload Login Logout Report</h3>
+<hr>
 
 <form method="post" enctype="multipart/form-data">
 
-<input type="file" name="loginfile" required>
+<input type="file" name="loginfile">
 
-<button>Upload Report</button>
+<button>Upload Login Report</button>
 
 </form>
 
-</div>
+<br>
 
-
-<!-- ACTION BUTTONS -->
-
-<div class="actions">
-
-<a href="/export_excel" class="btn">Export Excel</a>
-
-<a href="/reset" class="reset-btn">Reset Report</a>
-
-</div>
-
+<a href="/reset">Reset Report</a>
+<a href="/export_excel">Export Excel</a>
 
 {% if table %}
 
-<table>
+<table border="1">
 
 <tr>
 
-<th rowspan="2">UserName</th>
-<th rowspan="2">User Full Name</th>
-<th rowspan="2">Shift</th>
-
-{% for d in dates %}
-<th>{{d.strftime("%A")}}</th>
-{% endfor %}
-
-<th rowspan="2">Late Login</th>
-
-</tr>
-
-
-<tr>
+<th>Agent</th>
+<th>Name</th>
+<th>Shift</th>
+<th>Late</th>
 
 {% for d in dates %}
 <th>{{d}}</th>
 {% endfor %}
 
 </tr>
-
 
 {% for agent,data in table.items() %}
 
@@ -103,24 +61,21 @@ Upload Time : {{roster_time}}
 <td>{{agent}}</td>
 <td>{{data.name}}</td>
 <td>{{data.shift}}</td>
+<td>{{data.late}}</td>
 
 {% for d in dates %}
 
+<td>
+
 {% if d in data.days %}
 
-{% set cell = data.days[d] %}
-
-<td class="{{cell.status}}">{{cell.time}}</td>
-
-{% else %}
-
-<td></td>
+{{data.days[d].time}}
 
 {% endif %}
 
-{% endfor %}
+</td>
 
-<td>{{data.late}}</td>
+{% endfor %}
 
 </tr>
 
