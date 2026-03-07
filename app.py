@@ -22,10 +22,15 @@ def load_roster():
 
         roster = pd.read_excel(ROSTER_FILE)
 
-        # FIX ID FORMAT
-        roster["Agent ID"] = roster["Agent ID"].astype(str).str.strip()
+        # CLEAN AGENT ID
+        roster["Agent ID"] = (
+            roster["Agent ID"]
+            .astype(str)
+            .str.replace(".0", "", regex=False)
+            .str.strip()
+        )
 
-        # SHIFT FORMAT
+        # CLEAN SHIFT
         roster["Shift"] = pd.to_datetime(
             roster["Shift"], errors="coerce"
         ).dt.time
@@ -36,7 +41,7 @@ def load_roster():
 
 
 # =========================
-# PROCESS LOGIN REPORT
+# PROCESS LOGIN
 # =========================
 def process_login(file):
 
@@ -46,8 +51,13 @@ def process_login(file):
 
     df = df[df["Event"] == "LOGIN"]
 
-    # FIX USERNAME FORMAT
-    df["UserName"] = df["UserName"].astype(str).str.strip()
+    # CLEAN USERNAME
+    df["UserName"] = (
+        df["UserName"]
+        .astype(str)
+        .str.replace(".0", "", regex=False)
+        .str.strip()
+    )
 
     df["DateTime"] = pd.to_datetime(df["DateTime"])
 
@@ -78,7 +88,7 @@ def process_login(file):
                 "shift": ""
             }
 
-        # MATCH AGENT ID
+        # MATCH AGENT
         shift_row = roster[roster["Agent ID"] == agent]
 
         status = ""
@@ -117,7 +127,7 @@ def process_login(file):
 
 
 # =========================
-# HOME PAGE
+# HOME
 # =========================
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -198,52 +208,6 @@ def reset():
     LAST_DATES = None
 
     return redirect("/")
-
-
-# =========================
-# EXPORT EXCEL
-# =========================
-@app.route("/export_excel")
-def export_excel():
-
-    rows = []
-
-    for agent, data in LAST_TABLE.items():
-
-        row = {
-            "Agent": agent,
-            "Name": data["name"],
-            "Shift": data["shift"],
-            "Late Count": data["late"]
-        }
-
-        for d in LAST_DATES:
-
-            if d in data["days"]:
-
-                row[str(d)] = data["days"][d]["time"]
-
-            else:
-
-                row[str(d)] = ""
-
-        rows.append(row)
-
-    df = pd.DataFrame(rows)
-
-    output = BytesIO()
-
-    with pd.ExcelWriter(output, engine="openpyxl") as writer:
-
-        df.to_excel(writer, index=False)
-
-    output.seek(0)
-
-    return send_file(
-        output,
-        download_name="login_report.xlsx",
-        as_attachment=True
-    )
 
 
 # =========================
