@@ -22,7 +22,7 @@ def load_roster():
 
         roster = pd.read_excel(ROSTER_FILE)
 
-        # CLEAN AGENT ID
+        # CLEAN AGENT ID FORMAT
         roster["Agent ID"] = (
             roster["Agent ID"]
             .astype(str)
@@ -30,7 +30,7 @@ def load_roster():
             .str.strip()
         )
 
-        # CLEAN SHIFT
+        # CLEAN SHIFT FORMAT
         roster["Shift"] = pd.to_datetime(
             roster["Shift"], errors="coerce"
         ).dt.time
@@ -41,7 +41,7 @@ def load_roster():
 
 
 # =========================
-# PROCESS LOGIN
+# PROCESS LOGIN REPORT
 # =========================
 def process_login(file):
 
@@ -51,7 +51,7 @@ def process_login(file):
 
     df = df[df["Event"] == "LOGIN"]
 
-    # CLEAN USERNAME
+    # CLEAN USERNAME FORMAT
     df["UserName"] = (
         df["UserName"]
         .astype(str)
@@ -88,29 +88,30 @@ def process_login(file):
                 "shift": ""
             }
 
-        # MATCH AGENT
-        shift_row = roster[roster["Agent ID"] == agent]
-
         status = ""
 
-        if len(shift_row) > 0:
+        if roster is not None:
 
-            shift_time = shift_row.iloc[0]["Shift"]
+            shift_row = roster[roster["Agent ID"] == agent]
 
-            if pd.notna(shift_time):
+            if len(shift_row) > 0:
 
-                shift_text = shift_time.strftime("%H:%M:%S")
+                shift_time = shift_row.iloc[0]["Shift"]
 
-                table[agent]["shift"] = shift_text
+                if pd.notna(shift_time):
 
-                shift_dt = pd.to_datetime(str(date) + " " + shift_text)
+                    shift_text = shift_time.strftime("%H:%M:%S")
 
-                grace = shift_dt + timedelta(minutes=5)
+                    table[agent]["shift"] = shift_text
 
-                if login > grace:
+                    shift_dt = pd.to_datetime(str(date) + " " + shift_text)
 
-                    status = "late"
-                    table[agent]["late"] += 1
+                    grace = shift_dt + timedelta(minutes=5)
+
+                    if login > grace:
+
+                        status = "late"
+                        table[agent]["late"] += 1
 
         login_time = login.strftime("%H:%M:%S")
 
@@ -127,7 +128,7 @@ def process_login(file):
 
 
 # =========================
-# HOME
+# HOME PAGE
 # =========================
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -211,7 +212,56 @@ def reset():
 
 
 # =========================
-# RUN SERVER
+# EXPORT EXCEL
+# =========================
+@app.route("/export_excel")
+def export_excel():
+
+    if LAST_TABLE is None:
+        return redirect("/")
+
+    rows = []
+
+    for agent, data in LAST_TABLE.items():
+
+        row = {
+            "Agent": agent,
+            "Name": data["name"],
+            "Shift": data["shift"],
+            "Late Count": data["late"]
+        }
+
+        for d in LAST_DATES:
+
+            if d in data["days"]:
+
+                row[str(d)] = data["days"][d]["time"]
+
+            else:
+
+                row[str(d)] = ""
+
+        rows.append(row)
+
+    df = pd.DataFrame(rows)
+
+    output = BytesIO()
+
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+
+        df.to_excel(writer, index=False)
+
+    output.seek(0)
+
+    return send_file(
+        output,
+        download_name="login_report.xlsx",
+        as_attachment=True
+    )
+
+
+# =========================
+# RUN SERVER (RENDER FIX)
 # =========================
 if __name__ == "__main__":
 
