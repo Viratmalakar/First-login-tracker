@@ -13,14 +13,19 @@ LAST_TABLE = None
 LAST_DATES = None
 
 
+# =========================
+# LOAD ROSTER
+# =========================
 def load_roster():
 
     if os.path.exists(ROSTER_FILE):
 
         roster = pd.read_excel(ROSTER_FILE)
 
-        roster["Agent ID"] = roster["Agent ID"].astype(str)
+        # FIX ID FORMAT
+        roster["Agent ID"] = roster["Agent ID"].astype(str).str.strip()
 
+        # SHIFT FORMAT
         roster["Shift"] = pd.to_datetime(
             roster["Shift"], errors="coerce"
         ).dt.time
@@ -30,6 +35,9 @@ def load_roster():
     return None
 
 
+# =========================
+# PROCESS LOGIN REPORT
+# =========================
 def process_login(file):
 
     df = pd.read_excel(file)
@@ -38,7 +46,8 @@ def process_login(file):
 
     df = df[df["Event"] == "LOGIN"]
 
-    df["UserName"] = df["UserName"].astype(str)
+    # FIX USERNAME FORMAT
+    df["UserName"] = df["UserName"].astype(str).str.strip()
 
     df["DateTime"] = pd.to_datetime(df["DateTime"])
 
@@ -69,6 +78,7 @@ def process_login(file):
                 "shift": ""
             }
 
+        # MATCH AGENT ID
         shift_row = roster[roster["Agent ID"] == agent]
 
         status = ""
@@ -106,6 +116,9 @@ def process_login(file):
     return table, dates
 
 
+# =========================
+# HOME PAGE
+# =========================
 @app.route("/", methods=["GET", "POST"])
 def index():
 
@@ -135,6 +148,9 @@ def index():
     )
 
 
+# =========================
+# UPLOAD ROSTER
+# =========================
 @app.route("/upload_roster", methods=["POST"])
 def upload_roster():
 
@@ -153,6 +169,9 @@ def upload_roster():
     return redirect("/")
 
 
+# =========================
+# DELETE ROSTER
+# =========================
 @app.route("/delete_roster")
 def delete_roster():
 
@@ -167,6 +186,9 @@ def delete_roster():
     return redirect("/")
 
 
+# =========================
+# RESET REPORT
+# =========================
 @app.route("/reset")
 def reset():
 
@@ -178,6 +200,9 @@ def reset():
     return redirect("/")
 
 
+# =========================
+# EXPORT EXCEL
+# =========================
 @app.route("/export_excel")
 def export_excel():
 
@@ -221,6 +246,9 @@ def export_excel():
     )
 
 
+# =========================
+# RUN SERVER
+# =========================
 if __name__ == "__main__":
 
     port = int(os.environ.get("PORT", 10000))
