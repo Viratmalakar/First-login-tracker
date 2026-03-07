@@ -13,9 +13,6 @@ LAST_TABLE = None
 LAST_DATES = None
 
 
-# =========================
-# LOAD ROSTER
-# =========================
 def load_roster():
 
     if not os.path.exists(ROSTER_FILE):
@@ -23,44 +20,28 @@ def load_roster():
 
     roster = pd.read_excel(ROSTER_FILE)
 
-    roster["Agent ID"] = (
-        roster["Agent ID"]
-        .astype(str)
-        .str.replace(".0", "", regex=False)
-        .str.strip()
-    )
-
-    roster["Shift"] = pd.to_datetime(
-        roster["Shift"], errors="coerce"
-    ).dt.time
+    roster["Agent ID"] = roster["Agent ID"].astype(str).str.replace(".0","",regex=False).str.strip()
+    roster["Shift"] = pd.to_datetime(roster["Shift"], errors="coerce").dt.time
 
     return roster
 
 
-# =========================
-# PROCESS LOGIN REPORT
-# =========================
 def process_login(file):
 
     df = pd.read_excel(file)
 
-    df.columns = ["UserName", "Agent Name", "DateTime", "Event"]
+    df.columns = ["UserName","Agent Name","DateTime","Event"]
 
-    df = df[df["Event"] == "LOGIN"]
+    df = df[df["Event"]=="LOGIN"]
 
-    df["UserName"] = (
-        df["UserName"]
-        .astype(str)
-        .str.replace(".0", "", regex=False)
-        .str.strip()
-    )
+    df["UserName"] = df["UserName"].astype(str).str.replace(".0","",regex=False).str.strip()
 
     df["DateTime"] = pd.to_datetime(df["DateTime"])
 
     df["Date"] = df["DateTime"].dt.date
 
     first_login = df.sort_values("DateTime").groupby(
-        ["UserName", "Agent Name", "Date"]
+        ["UserName","Agent Name","Date"]
     ).first().reset_index()
 
     roster = load_roster()
@@ -68,82 +49,78 @@ def process_login(file):
     table = {}
     dates = sorted(first_login["Date"].unique())
 
-    for _, row in first_login.iterrows():
+    for _,row in first_login.iterrows():
 
-        agent = row["UserName"]
-        name = row["Agent Name"]
-        date = row["Date"]
-        login = row["DateTime"]
+        agent=row["UserName"]
+        name=row["Agent Name"]
+        date=row["Date"]
+        login=row["DateTime"]
 
         if agent not in table:
 
-            table[agent] = {
-                "name": name,
-                "days": {},
-                "late": 0,
-                "shift": ""
+            table[agent]={
+                "name":name,
+                "shift":"",
+                "late":0,
+                "days":{}
             }
 
-        status = ""
+        status=""
 
         if roster is not None:
 
-            shift_row = roster[roster["Agent ID"] == agent]
+            shift_row=roster[roster["Agent ID"]==agent]
 
-            if len(shift_row) > 0:
+            if len(shift_row)>0:
 
-                shift_time = shift_row.iloc[0]["Shift"]
+                shift_time=shift_row.iloc[0]["Shift"]
 
                 if pd.notna(shift_time):
 
-                    shift_text = shift_time.strftime("%H:%M:%S")
+                    shift_text=shift_time.strftime("%H:%M:%S")
 
-                    table[agent]["shift"] = shift_text
+                    table[agent]["shift"]=shift_text
 
-                    shift_dt = pd.to_datetime(str(date) + " " + shift_text)
+                    shift_dt=pd.to_datetime(str(date)+" "+shift_text)
 
-                    grace = shift_dt + timedelta(minutes=5)
+                    grace=shift_dt+timedelta(minutes=5)
 
-                    if login > grace:
+                    if login>grace:
 
-                        status = "late"
-                        table[agent]["late"] += 1
+                        status="late"
+                        table[agent]["late"]+=1
 
-        login_time = login.strftime("%H:%M:%S")
+        login_time=login.strftime("%H:%M:%S")
 
-        if login_time == "00:00:00":
-            login_time = ""
+        if login_time=="00:00:00":
+            login_time=""
 
-        table[agent]["days"][date] = {
-            "time": login_time,
-            "status": status
+        table[agent]["days"][date]={
+            "time":login_time,
+            "status":status
         }
 
-    return table, dates
+    return table,dates
 
 
-# =========================
-# HOME
-# =========================
-@app.route("/", methods=["GET", "POST"])
+@app.route("/",methods=["GET","POST"])
 def index():
 
-    global LAST_TABLE, LAST_DATES
+    global LAST_TABLE,LAST_DATES
 
-    roster_time = ""
+    roster_time=""
 
     if os.path.exists(ROSTER_INFO):
-        roster_time = open(ROSTER_INFO).read()
 
-    if request.method == "POST":
+        roster_time=open(ROSTER_INFO).read()
 
-        if "loginfile" in request.files:
+    if request.method=="POST":
 
-            file = request.files["loginfile"]
+        file=request.files["loginfile"]
 
-            if file.filename != "":
+        if file.filename!="":
 
-                LAST_TABLE, LAST_DATES = process_login(file)
+            LAST_TABLE,LAST_DATES=process_login(file)
 
     return render_template(
         "index.html",
@@ -153,29 +130,23 @@ def index():
     )
 
 
-# =========================
-# UPLOAD ROSTER
-# =========================
-@app.route("/upload_roster", methods=["POST"])
+@app.route("/upload_roster",methods=["POST"])
 def upload_roster():
 
-    roster = request.files["roster"]
+    roster=request.files["roster"]
 
-    if roster.filename != "":
+    if roster.filename!="":
 
         roster.save(ROSTER_FILE)
 
-        time = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
+        time=datetime.now().strftime("%d-%m-%Y %H:%M:%S")
 
-        with open(ROSTER_INFO, "w") as f:
+        with open(ROSTER_INFO,"w") as f:
             f.write(time)
 
     return redirect("/")
 
 
-# =========================
-# DELETE ROSTER
-# =========================
 @app.route("/delete_roster")
 def delete_roster():
 
@@ -188,55 +159,50 @@ def delete_roster():
     return redirect("/")
 
 
-# =========================
-# RESET REPORT
-# =========================
 @app.route("/reset")
 def reset():
 
-    global LAST_TABLE, LAST_DATES
+    global LAST_TABLE,LAST_DATES
 
-    LAST_TABLE = None
-    LAST_DATES = None
+    LAST_TABLE=None
+    LAST_DATES=None
 
     return redirect("/")
 
 
-# =========================
-# EXPORT EXCEL
-# =========================
 @app.route("/export_excel")
 def export_excel():
 
     if LAST_TABLE is None:
         return redirect("/")
 
-    rows = []
+    rows=[]
 
-    for agent, data in LAST_TABLE.items():
+    for agent,data in LAST_TABLE.items():
 
-        row = {
-            "Agent": agent,
-            "Name": data["name"],
-            "Shift": data["shift"],
-            "Late Count": data["late"]
+        row={
+            "Agent":agent,
+            "Name":data["name"],
+            "Shift":data["shift"],
+            "Late Count":data["late"]
         }
 
         for d in LAST_DATES:
 
             if d in data["days"]:
-                row[str(d)] = data["days"][d]["time"]
+                row[str(d)]=data["days"][d]["time"]
             else:
-                row[str(d)] = ""
+                row[str(d)]=""
 
         rows.append(row)
 
-    df = pd.DataFrame(rows)
+    df=pd.DataFrame(rows)
 
-    output = BytesIO()
+    output=BytesIO()
 
-    with pd.ExcelWriter(output, engine="openpyxl") as writer:
-        df.to_excel(writer, index=False)
+    with pd.ExcelWriter(output,engine="openpyxl") as writer:
+
+        df.to_excel(writer,index=False)
 
     output.seek(0)
 
