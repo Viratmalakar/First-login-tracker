@@ -13,14 +13,13 @@ LAST_TABLE = None
 LAST_DATES = None
 
 
-# =========================
-# LOAD ROSTER
-# =========================
 def load_roster():
 
     if os.path.exists(ROSTER_FILE):
 
         roster = pd.read_excel(ROSTER_FILE)
+
+        roster["Agent ID"] = roster["Agent ID"].astype(str)
 
         roster["Shift"] = pd.to_datetime(
             roster["Shift"], errors="coerce"
@@ -31,9 +30,6 @@ def load_roster():
     return None
 
 
-# =========================
-# PROCESS LOGIN
-# =========================
 def process_login(file):
 
     df = pd.read_excel(file)
@@ -41,6 +37,8 @@ def process_login(file):
     df.columns = ["UserName", "Agent Name", "DateTime", "Event"]
 
     df = df[df["Event"] == "LOGIN"]
+
+    df["UserName"] = df["UserName"].astype(str)
 
     df["DateTime"] = pd.to_datetime(df["DateTime"])
 
@@ -73,6 +71,8 @@ def process_login(file):
 
         shift_row = roster[roster["Agent ID"] == agent]
 
+        status = ""
+
         if len(shift_row) > 0:
 
             shift_time = shift_row.iloc[0]["Shift"]
@@ -92,18 +92,6 @@ def process_login(file):
                     status = "late"
                     table[agent]["late"] += 1
 
-                else:
-
-                    status = ""
-
-            else:
-
-                status = ""
-
-        else:
-
-            status = ""
-
         login_time = login.strftime("%H:%M:%S")
 
         if login_time == "00:00:00":
@@ -118,15 +106,11 @@ def process_login(file):
     return table, dates
 
 
-# =========================
-# HOME
-# =========================
 @app.route("/", methods=["GET", "POST"])
 def index():
 
     global LAST_TABLE, LAST_DATES
 
-    message = ""
     roster_time = ""
 
     if os.path.exists(ROSTER_INFO):
@@ -151,9 +135,6 @@ def index():
     )
 
 
-# =========================
-# UPLOAD ROSTER
-# =========================
 @app.route("/upload_roster", methods=["POST"])
 def upload_roster():
 
@@ -172,9 +153,6 @@ def upload_roster():
     return redirect("/")
 
 
-# =========================
-# DELETE ROSTER
-# =========================
 @app.route("/delete_roster")
 def delete_roster():
 
@@ -189,9 +167,6 @@ def delete_roster():
     return redirect("/")
 
 
-# =========================
-# RESET REPORT
-# =========================
 @app.route("/reset")
 def reset():
 
@@ -203,9 +178,6 @@ def reset():
     return redirect("/")
 
 
-# =========================
-# EXPORT EXCEL
-# =========================
 @app.route("/export_excel")
 def export_excel():
 
