@@ -1,15 +1,15 @@
-from flask import Flask,render_template,request,redirect
+from flask import Flask, render_template, request
 import pandas as pd
 import json
 import os
 from datetime import timedelta
 
-app=Flask(__name__)
+app = Flask(__name__)
 
-AGENT_FILE="agents.json"
+AGENT_FILE = "agents.json"
 
-TABLE=None
-DATES=None
+TABLE = None
+DATES = None
 
 
 def load_agents():
@@ -17,194 +17,114 @@ def load_agents():
     if os.path.exists(AGENT_FILE):
 
         with open(AGENT_FILE) as f:
-
             return json.load(f)
 
     return {}
 
 
-def save_agents(data):
-
-    with open(AGENT_FILE,"w") as f:
-
-        json.dump(data,f,indent=4)
-
-
-
 def process(file):
 
-    agents=load_agents()
+    agents = load_agents()
 
-    df=pd.read_excel(file)
+    df = pd.read_excel(file)
 
-    df.columns=["UserName","Agent Name","DateTime","Event"]
+    df.columns = ["UserName", "Agent Name", "DateTime", "Event"]
 
-    df=df[df["Event"]=="LOGIN"]
+    df = df[df["Event"] == "LOGIN"]
 
-    df["UserName"]=df["UserName"].astype(str).str.replace(".0","",regex=False)
+    df["UserName"] = (
+        df["UserName"]
+        .astype(str)
+        .str.replace(".0", "", regex=False)
+        .str.strip()
+    )
 
-    df["DateTime"]=pd.to_datetime(df["DateTime"])
+    df["DateTime"] = pd.to_datetime(df["DateTime"])
 
-    df["Date"]=df["DateTime"].dt.date
+    df["Date"] = df["DateTime"].dt.date
 
-    first=df.sort_values("DateTime").groupby(
-        ["UserName","Date"]
+    df["Day"] = df["DateTime"].dt.strftime("%a")
+
+    first = df.sort_values("DateTime").groupby(
+        ["UserName", "Date", "Day"]
     ).first().reset_index()
 
-    table={}
+    table = {}
 
-    dates=sorted(first["Date"].unique())
+    dates = sorted(first["Date"].unique())
 
-    for _,r in first.iterrows():
+    days = {}
 
-        agent=str(r["UserName"])
+    for d in first[["Date", "Day"]].drop_duplicates().values:
+
+        days[str(d[0])] = d[1]
+
+    for _, r in first.iterrows():
+
+        agent = str(r["UserName"])
 
         if agent not in agents:
             continue
 
-        name=agents[agent]["name"]
-        shift=agents[agent]["shift"]
+        name = agents[agent]["name"]
+        shift = agents[agent]["shift"]
 
-        date=r["Date"]
-        login=r["DateTime"]
+        date = r["Date"]
+        login = r["DateTime"]
 
         if agent not in table:
 
-            table[agent]={
-                "name":name,
-                "shift":shift,
-                "late":0,
-                "days":{}
+            table[agent] = {
+                "name": name,
+                "shift": shift,
+                "late": 0,
+                "days": {}
             }
 
-        shift_dt=pd.to_datetime(str(date)+" "+shift)
+        shift_dt = pd.to_datetime(str(date) + " " + shift)
 
-        status=""
+        status = ""
 
-        if login>shift_dt+timedelta(minutes=5):
+        if login > shift_dt + timedelta(minutes=5):
 
-            status="late"
-            table[agent]["late"]+=1
+            status = "late"
+            table[agent]["late"] += 1
 
-        table[agent]["days"][date]={
-            "time":login.strftime("%H:%M:%S"),
-            "status":status
+        table[agent]["days"][str(date)] = {
+            "time": login.strftime("%H:%M:%S"),
+            "status": status
         }
 
-    return table,dates
+    return table, dates, days
 
 
-
-@app.route("/",methods=["GET","POST"])
-
+@app.route("/", methods=["GET", "POST"])
 def index():
 
-    global TABLE,DATES
+    global TABLE, DATES, DAYS
 
-    if request.method=="POST":
+    TABLE = None
+    DATES = None
+    DAYS = None
 
-        file=request.files["file"]
+    if request.method == "POST":
 
-        TABLE,DATES=process(file)
+        file = request.files["file"]
 
-    return render_template("index.html",table=TABLE,dates=DATES)
+        if file.filename != "":
 
+            TABLE, DATES, DAYS = process(file)
 
-
-@app.route("/settings")
-
-def settings():
-
-    agents=load_agents()
-
-    return render_template("settings.html",agents=agents)
-
-
-
-@app.route("/add_agent",methods=["POST"])
-
-def add_agent():
-
-    agents=load_agents()
-
-    id=request.form["id"]
-
-    name=request.form["name"]
-
-    shift=request.form["shift"]
-
-    agents[id]={"name":name,"shift":shift}
-
-    save_agents(agents)
-
-    return redirect("/settings")
+    return render_template(
+        "index.html",
+        table=TABLE,
+        dates=DATES,
+        days=DAYS
+    )
 
 
+if __name__ == "__main__":
 
-@app.route("/bulk_upload",methods=["POST"])
+    port = int(os.environ.get("PORT", 10000))
 
-def bulk_upload():
-
-    agents=load_agents()
-
-    file=request.files["file"]
-
-    df=pd.read_excel(file)
-
-    for _,r in df.iterrows():
-
-        id=str(r["Agent ID"])
-
-        name=r["Agent Name"]
-
-        shift=str(r["Shift"])
-
-        agents[id]={"name":name,"shift":shift}
-
-    save_agents(agents)
-
-    return redirect("/settings")
-
-
-
-@app.route("/delete_agent")
-
-def delete_agent():
-
-    agents=load_agents()
-
-    id=request.args.get("id")
-
-    if id in agents:
-
-        del agents[id]
-
-    save_agents(agents)
-
-    return redirect("/settings")
-
-
-
-@app.route("/update_shift",methods=["POST"])
-
-def update_shift():
-
-    agents=load_agents()
-
-    id=request.form["id"]
-
-    shift=request.form["shift"]
-
-    agents[id]["shift"]=shift
-
-    save_agents(agents)
-
-    return redirect("/settings")
-
-
-
-if __name__=="__main__":
-
-    port=int(os.environ.get("PORT",10000))
-
-    app.run(host="0.0.0.0",port=port)
+    app.run(host="0.0.0.0", port=port)
