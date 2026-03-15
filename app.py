@@ -1,128 +1,210 @@
-from flask import Flask, render_template, request
+from flask import Flask,render_template,request,redirect
 import pandas as pd
+import json
 import os
 from datetime import timedelta
 
-app = Flask(__name__)
+app=Flask(__name__)
 
-ROSTER_FILE = "roster.xlsx"
+AGENT_FILE="agents.json"
 
-TABLE = None
-DATES = None
-
-
-def load_roster():
-
-    roster = pd.read_excel(ROSTER_FILE)
-
-    roster["Agent ID"] = (
-        roster["Agent ID"]
-        .astype(str)
-        .str.replace(".0", "", regex=False)
-        .str.strip()
-    )
-
-    roster["Shift"] = roster["Shift"].astype(str)
-
-    return roster
+TABLE=None
+DATES=None
 
 
-def process_login(file):
+def load_agents():
 
-    roster = load_roster()
+    if os.path.exists(AGENT_FILE):
 
-    df = pd.read_excel(file)
+        with open(AGENT_FILE) as f:
 
-    df.columns = ["UserName", "Agent Name", "DateTime", "Event"]
+            return json.load(f)
 
-    df = df[df["Event"] == "LOGIN"]
+    return {}
 
-    df["UserName"] = (
-        df["UserName"]
-        .astype(str)
-        .str.replace(".0", "", regex=False)
-        .str.strip()
-    )
 
-    df["DateTime"] = pd.to_datetime(df["DateTime"])
+def save_agents(data):
 
-    df["Date"] = df["DateTime"].dt.date
+    with open(AGENT_FILE,"w") as f:
 
-    first_login = df.sort_values("DateTime").groupby(
-        ["UserName", "Date"]
+        json.dump(data,f,indent=4)
+
+
+
+def process(file):
+
+    agents=load_agents()
+
+    df=pd.read_excel(file)
+
+    df.columns=["UserName","Agent Name","DateTime","Event"]
+
+    df=df[df["Event"]=="LOGIN"]
+
+    df["UserName"]=df["UserName"].astype(str).str.replace(".0","",regex=False)
+
+    df["DateTime"]=pd.to_datetime(df["DateTime"])
+
+    df["Date"]=df["DateTime"].dt.date
+
+    first=df.sort_values("DateTime").groupby(
+        ["UserName","Date"]
     ).first().reset_index()
 
-    table = {}
+    table={}
 
-    dates = sorted(first_login["Date"].unique())
+    dates=sorted(first["Date"].unique())
 
-    for _, row in first_login.iterrows():
+    for _,r in first.iterrows():
 
-        agent = str(row["UserName"])
-        date = row["Date"]
-        login = row["DateTime"]
+        agent=str(r["UserName"])
 
-        roster_row = roster[roster["Agent ID"] == agent]
-
-        if len(roster_row) == 0:
+        if agent not in agents:
             continue
 
-        name = roster_row.iloc[0]["Agent Name"]
-        shift = roster_row.iloc[0]["Shift"]
+        name=agents[agent]["name"]
+        shift=agents[agent]["shift"]
+
+        date=r["Date"]
+        login=r["DateTime"]
 
         if agent not in table:
 
-            table[agent] = {
-                "name": name,
-                "shift": shift,
-                "late": 0,
-                "days": {}
+            table[agent]={
+                "name":name,
+                "shift":shift,
+                "late":0,
+                "days":{}
             }
 
-        shift_dt = pd.to_datetime(str(date) + " " + shift)
+        shift_dt=pd.to_datetime(str(date)+" "+shift)
 
-        status = ""
+        status=""
 
-        if login > shift_dt + timedelta(minutes=5):
+        if login>shift_dt+timedelta(minutes=5):
 
-            status = "late"
-            table[agent]["late"] += 1
+            status="late"
+            table[agent]["late"]+=1
 
-        login_time = login.strftime("%H:%M:%S")
-
-        if login_time == "00:00:00":
-            login_time = ""
-
-        table[agent]["days"][date] = {
-            "time": login_time,
-            "status": status
+        table[agent]["days"][date]={
+            "time":login.strftime("%H:%M:%S"),
+            "status":status
         }
 
-    return table, dates
+    return table,dates
 
 
-@app.route("/", methods=["GET", "POST"])
+
+@app.route("/",methods=["GET","POST"])
+
 def index():
 
-    global TABLE, DATES
+    global TABLE,DATES
 
-    if request.method == "POST":
+    if request.method=="POST":
 
-        file = request.files["file"]
+        file=request.files["file"]
 
-        if file.filename != "":
+        TABLE,DATES=process(file)
 
-            TABLE, DATES = process_login(file)
-
-    return render_template(
-        "index.html",
-        table=TABLE,
-        dates=DATES
-    )
+    return render_template("index.html",table=TABLE,dates=DATES)
 
 
-if __name__ == "__main__":
 
-    port = int(os.environ.get("PORT", 10000))
+@app.route("/settings")
 
-    app.run(host="0.0.0.0", port=port)
+def settings():
+
+    agents=load_agents()
+
+    return render_template("settings.html",agents=agents)
+
+
+
+@app.route("/add_agent",methods=["POST"])
+
+def add_agent():
+
+    agents=load_agents()
+
+    id=request.form["id"]
+
+    name=request.form["name"]
+
+    shift=request.form["shift"]
+
+    agents[id]={"name":name,"shift":shift}
+
+    save_agents(agents)
+
+    return redirect("/settings")
+
+
+
+@app.route("/bulk_upload",methods=["POST"])
+
+def bulk_upload():
+
+    agents=load_agents()
+
+    file=request.files["file"]
+
+    df=pd.read_excel(file)
+
+    for _,r in df.iterrows():
+
+        id=str(r["Agent ID"])
+
+        name=r["Agent Name"]
+
+        shift=str(r["Shift"])
+
+        agents[id]={"name":name,"shift":shift}
+
+    save_agents(agents)
+
+    return redirect("/settings")
+
+
+
+@app.route("/delete_agent")
+
+def delete_agent():
+
+    agents=load_agents()
+
+    id=request.args.get("id")
+
+    if id in agents:
+
+        del agents[id]
+
+    save_agents(agents)
+
+    return redirect("/settings")
+
+
+
+@app.route("/update_shift",methods=["POST"])
+
+def update_shift():
+
+    agents=load_agents()
+
+    id=request.form["id"]
+
+    shift=request.form["shift"]
+
+    agents[id]["shift"]=shift
+
+    save_agents(agents)
+
+    return redirect("/settings")
+
+
+
+if __name__=="__main__":
+
+    port=int(os.environ.get("PORT",10000))
+
+    app.run(host="0.0.0.0",port=port)
