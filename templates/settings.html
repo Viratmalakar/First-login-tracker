@@ -1,0 +1,84 @@
+<h2>Agent Settings</h2>
+
+<a href="/">Back</a>
+
+<h3>Add Agent</h3>
+
+<form action="/add_agent" method="post">
+
+Agent ID
+<input name="id">
+
+Name
+<input name="name">
+
+Shift
+<input type="time" name="shift">
+
+<button>Add</button>
+
+</form>
+
+<hr>
+
+<h3>Bulk Upload Agents</h3>
+
+<form action="/bulk_upload" method="post" enctype="multipart/form-data">
+
+<input type="file" name="file">
+
+<button>Upload Excel</button>
+
+</form>
+
+<hr>
+
+<table border="1">
+
+<tr>
+
+<th>ID</th>
+<th>Name</th>
+<th>Shift</th>
+<th>Update</th>
+<th>Delete</th>
+
+</tr>
+
+{% for id,a in agents.items() %}
+
+<tr>
+
+<td>{{id}}</td>
+
+<td>{{a.name}}</td>
+
+<td>
+
+<form action="/update_shift" method="post">
+
+<input type="hidden" name="id" value="{{id}}">
+
+<input type="time" name="shift" value="{{a.shift}}">
+
+</td>
+
+<td>
+
+<button>Save</button>
+
+</form>
+
+</td>
+
+<td>
+
+<a href="/delete_agent?id={{id}}">Delete</a>
+
+</td>
+
+</tr>
+
+{% endfor %}
+
+</table>
