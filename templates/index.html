@@ -7,6 +7,8 @@
 
 <link rel="stylesheet" href="/static/style.css">
 
+<script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+
 </head>
 
 <body>
@@ -24,36 +26,61 @@
 
 <form method="post" enctype="multipart/form-data">
 
-<input type="file" name="file" class="file">
+<input type="file" name="file">
 
-<br><br>
-
-<button class="uploadbtn">
-
-UPLOAD LOGIN REPORT
-
-</button>
+<button class="uploadbtn">UPLOAD LOGIN REPORT</button>
 
 </form>
 
 </div>
 
 
+<div class="filters">
+
+<input type="text" id="agentFilter" placeholder="Search Agent ID / Name">
+
+From
+<input type="date" id="fromDate">
+
+To
+<input type="date" id="toDate">
+
+<button onclick="filterTable()">Filter</button>
+
+<button onclick="copyTable()">Copy Table</button>
+
+</div>
+
+
 {% if table %}
 
-<div class="tablebox">
+<div id="tableBox">
 
-<table>
+<table id="dataTable">
 
 <tr>
 
 <th>Agent ID</th>
 <th>Name</th>
 <th>Shift</th>
-<th>Late</th>
+<th>Weekly Late</th>
 
 {% for d in dates %}
-<th>{{d}}</th>
+
+<th>
+
+{{d}}
+
+<br>
+
+<span class="day">
+
+{{d.strftime("%a")}}
+
+</span>
+
+</th>
+
 {% endfor %}
 
 </tr>
@@ -69,18 +96,27 @@ UPLOAD LOGIN REPORT
 
 <td>{{data.shift}}</td>
 
-<td>{{data.late}}</td>
+<td class="weeklate">{{data.late}}</td>
+
 
 {% for d in dates %}
 
 <td
+
+data-date="{{d}}"
+
 {% if d in data.days and data.days[d].status=="late" %}
-class="late"
+
+class="late3d"
+
 {% endif %}
+
 >
 
 {% if d in data.days %}
+
 {{data.days[d].time}}
+
 {% endif %}
 
 </td>
@@ -96,6 +132,8 @@ class="late"
 </div>
 
 {% endif %}
+
+<script src="/static/script.js"></script>
 
 </body>
 </html>
