@@ -3,7 +3,7 @@
 
 <head>
 
-<title>Agent First Login Tracker</title>
+<title>First Login Dashboard</title>
 
 <link rel="stylesheet" href="/static/style.css">
 
@@ -11,36 +11,53 @@
 
 <body>
 
-<h2>Agent First Login Tracker</h2>
+<div class="topbar">
+
+<a href="/settings" class="settings">⚙ Settings</a>
+
+</div>
+
+
+<div class="centerbox">
+
+<h1 class="title">Agent First Login Dashboard</h1>
 
 <form method="post" enctype="multipart/form-data">
 
-<input type="file" name="file">
+<input type="file" name="file" class="file">
 
-<button>Upload Login Report</button>
+<br><br>
+
+<button class="uploadbtn">
+
+UPLOAD LOGIN REPORT
+
+</button>
 
 </form>
 
-<br>
+</div>
+
 
 {% if table %}
+
+<div class="tablebox">
 
 <table>
 
 <tr>
 
 <th>Agent ID</th>
-<th>Agent Name</th>
+<th>Name</th>
 <th>Shift</th>
-<th>Weekly Late</th>
+<th>Late</th>
 
 {% for d in dates %}
-
 <th>{{d}}</th>
-
 {% endfor %}
 
 </tr>
+
 
 {% for agent,data in table.items() %}
 
@@ -76,8 +93,9 @@ class="late"
 
 </table>
 
+</div>
+
 {% endif %}
 
 </body>
-
 </html>
